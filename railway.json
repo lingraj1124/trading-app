@@ -1,6 +1,5 @@
 {
   "build": {
-    "builder": "NIXPACKS"
-  },
-  "start": "java -jar ./tradingview-webhook-0.0.1-SNAPSHOT.jar"
+    "builder": "DOCKERFILE"
+  }
 }
