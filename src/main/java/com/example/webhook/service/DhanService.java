@@ -109,8 +109,7 @@ public class DhanService {
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
 
             JsonNode root = objectMapper.readTree(response.getBody());
-
-            logger.info("all posttion data: {}", root);
+            
             for (JsonNode position : root) {
             	if (
             		    position.has("securityId") &&
