@@ -44,7 +44,7 @@ public class DhanController {
             request.setTransactionType("SELL");
             request.setOrderType("STOP_LOSS");
 
-            if (request.getTriggerPrice() != null) {
+            if (request.getTriggerPrice() != 0.0) {
                 double price = request.getTriggerPrice() - 0.15;
                 request.setPrice(price);
             }
@@ -63,11 +63,11 @@ public class DhanController {
             request.setTransactionType("SELL");
             request.setOrderType("STOP_LOSS");
 
-            if (request.getTriggerPrice() != null) {
+            if (request.getTriggerPrice() != 0.0) {
                 double price = request.getTriggerPrice() - 0.15;
                 request.setPrice(price);
             }
-            
+
             return dhanService.placeOrder(request);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Invalid payload");
