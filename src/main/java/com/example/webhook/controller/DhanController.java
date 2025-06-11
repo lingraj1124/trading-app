@@ -27,7 +27,7 @@ public class DhanController {
     @PostMapping("/buy")
     public ResponseEntity<String> placeBuyOrder(@RequestBody String body) {
         try {
-            System.out.println("Received webhook: " + body);
+            System.out.println("buy Received webhook: " + body);
             DhanOrderRequest request = objectMapper.readValue(body, DhanOrderRequest.class);
             request.setTransactionType("BUY");
             return dhanService.placeOrder(request);
@@ -39,7 +39,7 @@ public class DhanController {
     @PostMapping("/sell")
     public ResponseEntity<String> placeSellOrder(@RequestBody String body) {
         try {
-            System.out.println("Received webhook: " + body);
+            System.out.println("sell Received webhook: " + body);
             DhanOrderRequest request = objectMapper.readValue(body, DhanOrderRequest.class);
             request.setTransactionType("SELL");
             request.setOrderType("STOP_LOSS");
@@ -58,7 +58,7 @@ public class DhanController {
     @PostMapping("/stoploss")
     public ResponseEntity<String> placeStopLoss(@RequestBody String body) {
         try {
-            System.out.println("Received webhook: " + body);
+            System.out.println("stoploss Received webhook: " + body);
             DhanOrderRequest request = objectMapper.readValue(body, DhanOrderRequest.class);
             request.setTransactionType("SELL");
             request.setOrderType("STOP_LOSS");

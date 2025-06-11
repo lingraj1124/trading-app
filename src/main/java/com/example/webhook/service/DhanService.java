@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -38,6 +39,9 @@ public class DhanService {
         try {
             // Step 1: Check position from Dhan API
             boolean hasPosition = checkPositionFromDhan(request.getSecurityId());
+
+
+            logger.info("full request data {}", objectMapper.writeValueAsString(request));
 
             // Step 2: Avoid repeated BUY if position already exists
             if ("BUY".equalsIgnoreCase(request.getTransactionType()) && hasPosition) {
