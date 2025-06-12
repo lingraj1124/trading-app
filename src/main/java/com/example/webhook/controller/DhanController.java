@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
+import java.math.RoundingMode;
 
 @RestController
 public class DhanController {
@@ -45,8 +46,11 @@ public class DhanController {
             request.setOrderType("STOP_LOSS");
 
             if (request.getTriggerPrice() != 0.0) {
-                double price = request.getTriggerPrice() - 0.15;
-                request.setPrice(price);
+                double rawPrice = request.getTriggerPrice() - 0.15;
+                double roundedPrice = new BigDecimal(rawPrice)
+                                        .setScale(2, RoundingMode.HALF_UP)
+                                        .doubleValue();
+                request.setPrice(roundedPrice);
             }
 
             return dhanService.placeOrder(request);
@@ -64,8 +68,11 @@ public class DhanController {
             request.setOrderType("STOP_LOSS");
 
             if (request.getTriggerPrice() != 0.0) {
-                double price = request.getTriggerPrice() - 0.15;
-                request.setPrice(price);
+                double rawPrice = request.getTriggerPrice() - 0.15;
+                double roundedPrice = new BigDecimal(rawPrice)
+                                        .setScale(2, RoundingMode.HALF_UP)
+                                        .doubleValue();
+                request.setPrice(roundedPrice);
             }
 
             return dhanService.placeOrder(request);
