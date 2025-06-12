@@ -119,7 +119,7 @@ public class DhanService {
             		    position.has("securityId") &&
             		    position.has("positionType") &&
             		    !"CLOSED".equalsIgnoreCase(position.get("positionType").asText()) &&
-            		    securityId.equals(position.get("securityId").asText())
+            		    securityId.equals(position.get("securityId").asText()) &&  && position.getNetQty() > 0
             		) {
                     return true;
                 }
