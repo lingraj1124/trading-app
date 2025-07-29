@@ -5,16 +5,18 @@ import com.example.webhook.model.DhanOrderRequest;
 import com.example.webhook.repository.OrderLogRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -32,48 +34,49 @@ public class DhanService {
     private String accessToken;
 
     private final RestTemplate restTemplate = new RestTemplate();
-
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public ResponseEntity<String> placeOrder(DhanOrderRequest request) {
         try {
-            // Step 1: Check position from Dhan API
             boolean hasPosition = checkPositionFromDhan(request.getSecurityId());
+            logger.info("Full request data: {}", objectMapper.writeValueAsString(request));
 
-
-            logger.info("full request data {}", objectMapper.writeValueAsString(request));
-
-            // Step 2: Avoid repeated BUY if position already exists
+            // Step 1: Skip BUY if position already exists
             if ("BUY".equalsIgnoreCase(request.getTransactionType()) && hasPosition) {
-                logger.info("Skipping BUY order for {} as position already exists.", request.getSecurityId());
+                logger.info("Skipping BUY for {} as position exists.", request.getSecurityId());
                 return ResponseEntity.ok("BUY skipped due to existing position");
             }
 
-            // Step 3: STOP_LOSS check - if position doesn't exist, don't place STOP_LOSS
+            // Step 2: STOP_LOSS checks
+            OrderLog backupLog = null;
             if ("STOP_LOSS".equalsIgnoreCase(request.getOrderType())) {
+
                 if (!hasPosition) {
                     updateStopLossLogAsClosed(request.getSecurityId());
                     logger.info("STOP_LOSS skipped, no active position for {}", request.getSecurityId());
                     return ResponseEntity.ok("STOP_LOSS skipped due to no position");
                 }
 
-                // Step 4: Cancel existing STOP_LOSS from DB
-                Optional<OrderLog> existingLogOpt = orderLogRepository.findTopBySecurityIdAndOrderTypeOrderByIdDesc(
-                        request.getSecurityId(), "STOP_LOSS");
+                // Cancel old STOP_LOSS if exists, but keep backup in case new STOP_LOSS fails
+                Optional<OrderLog> existingLogOpt = orderLogRepository
+                        .findTopBySecurityIdAndOrderTypeOrderByIdDesc(request.getSecurityId(), "STOP_LOSS");
 
-                existingLogOpt.ifPresent(log -> {
-                    String cancelUrl = "https://api.dhan.co/v2/orders/" + log.getOrderId();
+                if (existingLogOpt.isPresent()) {
+                    OrderLog existingLog = existingLogOpt.get();
+                    backupLog = new OrderLog(existingLog); // assuming copy constructor
+                    String cancelUrl = "https://api.dhan.co/v2/orders/" + existingLog.getOrderId();
+
                     try {
-                        logger.info("Cancelling old STOP_LOSS with ID: {}", log.getOrderId());
+                        logger.info("Cancelling old STOP_LOSS: {}", existingLog.getOrderId());
                         HttpHeaders headers = createHeaders();
                         restTemplate.exchange(cancelUrl, HttpMethod.DELETE, new HttpEntity<>(headers), String.class);
                     } catch (Exception e) {
                         logger.warn("Failed to cancel STOP_LOSS: {}", e.getMessage());
                     }
-                });
+                }
             }
 
-            // Step 5: Place new order
+            // Step 3: Place new order
             HttpHeaders headers = createHeaders();
             request.setCorrelationId("order-" + System.currentTimeMillis());
             request.setDhanClientId(clientId);
@@ -84,7 +87,7 @@ public class DhanService {
 
             logger.info("Order Response: {}", response.getBody());
 
-            // Step 6: Store Order in DB
+            // Step 4: Save new order log in DB
             JsonNode json = objectMapper.readTree(response.getBody());
             if (json.has("orderId")) {
                 String orderId = json.get("orderId").asText();
@@ -101,7 +104,20 @@ public class DhanService {
             return response;
 
         } catch (Exception e) {
-            logger.error("Error placing order", e);
+            logger.error("Error placing order: {}", e.getMessage());
+
+            // Step 5: If new STOP_LOSS fails, restore the old STOP_LOSS in DB
+            if ("STOP_LOSS".equalsIgnoreCase(request.getOrderType()) && backupLog != null) {
+                try {
+                    logger.warn("Restoring previous STOP_LOSS log due to failure.");
+                    backupLog.setId(null); // Make sure we don't update same ID
+                    OrderLog restored = orderLogRepository.save(backupLog);
+                    logger.info("Restored STOP_LOSS log: {}", restored);
+                } catch (Exception restoreEx) {
+                    logger.error("Failed to restore old STOP_LOSS: {}", restoreEx.getMessage());
+                }
+            }
+
             return ResponseEntity.internalServerError().body("Error placing order: " + e.getMessage());
         }
     }
@@ -113,14 +129,14 @@ public class DhanService {
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
 
             JsonNode root = objectMapper.readTree(response.getBody());
-            
+
             for (JsonNode position : root) {
-            	if (
-            		    position.has("securityId") &&
-            		    position.has("positionType") &&
-            		    !"CLOSED".equalsIgnoreCase(position.get("positionType").asText()) &&
-            		    securityId.equals(position.get("securityId").asText())
-            		) {
+                if (
+                        position.has("securityId") &&
+                        position.has("positionType") &&
+                        !"CLOSED".equalsIgnoreCase(position.get("positionType").asText()) &&
+                        securityId.equals(position.get("securityId").asText())
+                ) {
                     return true;
                 }
             }
@@ -131,7 +147,9 @@ public class DhanService {
     }
 
     private void updateStopLossLogAsClosed(String securityId) {
-        Optional<OrderLog> logOpt = orderLogRepository.findTopBySecurityIdAndOrderTypeOrderByIdDesc(securityId, "STOP_LOSS");
+        Optional<OrderLog> logOpt = orderLogRepository
+                .findTopBySecurityIdAndOrderTypeOrderByIdDesc(securityId, "STOP_LOSS");
+
         logOpt.ifPresent(log -> {
             log.setPosition("closed");
             orderLogRepository.save(log);
