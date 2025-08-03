@@ -13,60 +13,59 @@ public class OrderLog {
     private String orderId;
     private String orderType;
     private String securityId;
-
     private ZonedDateTime createdDateTime;
+    private String position; // "true" or "closed"
 
-    private String position; // true / closed
-    
+    // 🔹 No-arg constructor required by JPA
+    public OrderLog() {
+    }
 
-    // Getters and Setters
+    // 🔹 All Getters and Setters
+    public Long getId() {
+        return id;
+    }
 
-	public Long getId() {
-		return id;
-	}
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+    public String getOrderId() {
+        return orderId;
+    }
 
-	public String getOrderId() {
-		return orderId;
-	}
+    public void setOrderId(String orderId) {
+        this.orderId = orderId;
+    }
 
-	public void setOrderId(String orderId) {
-		this.orderId = orderId;
-	}
+    public String getOrderType() {
+        return orderType;
+    }
 
-	public String getOrderType() {
-		return orderType;
-	}
+    public void setOrderType(String orderType) {
+        this.orderType = orderType;
+    }
 
-	public void setOrderType(String orderType) {
-		this.orderType = orderType;
-	}
+    public String getSecurityId() {
+        return securityId;
+    }
 
-	public String getSecurityId() {
-		return securityId;
-	}
+    public void setSecurityId(String securityId) {
+        this.securityId = securityId;
+    }
 
-	public void setSecurityId(String securityId) {
-		this.securityId = securityId;
-	}
+    public ZonedDateTime getCreatedDateTime() {
+        return createdDateTime;
+    }
 
-	public ZonedDateTime getCreatedDateTime() {
-		return createdDateTime;
-	}
+    public void setCreatedDateTime(ZonedDateTime createdDateTime) {
+        this.createdDateTime = createdDateTime;
+    }
 
-	public void setCreatedDateTime(ZonedDateTime createdDateTime) {
-		this.createdDateTime = createdDateTime;
-	}
+    public String getPosition() {
+        return position;
+    }
 
-	public String getPosition() {
-		return position;
-	}
-
-	public void setPosition(String position) {
-		this.position = position;
-	}
-
+    public void setPosition(String position) {
+        this.position = position;
+    }
 }
