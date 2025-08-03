@@ -37,36 +37,31 @@ public class DhanService {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public ResponseEntity<String> placeOrder(DhanOrderRequest request) {
-        OrderLog backupLog = null;  // Declare backupLog outside try block
+        OrderLog backupLog = null;
 
         try {
             boolean hasPosition = checkPositionFromDhan(request.getSecurityId());
             logger.info("Full request data: {}", objectMapper.writeValueAsString(request));
 
-            // Step 1: Skip BUY if position already exists
             if ("BUY".equalsIgnoreCase(request.getTransactionType()) && hasPosition) {
                 logger.info("Skipping BUY for {} as position exists.", request.getSecurityId());
                 return ResponseEntity.ok("BUY skipped due to existing position");
             }
 
-            // Step 2: STOP_LOSS checks
             if ("STOP_LOSS".equalsIgnoreCase(request.getOrderType())) {
 
-                // No active position? Then skip STOP_LOSS and update old log
                 if (!hasPosition) {
                     updateStopLossLogAsClosed(request.getSecurityId());
                     logger.info("STOP_LOSS skipped, no active position for {}", request.getSecurityId());
                     return ResponseEntity.ok("STOP_LOSS skipped due to no position");
                 }
 
-                // Cancel old STOP_LOSS if it exists, and back it up
                 Optional<OrderLog> existingLogOpt = orderLogRepository
                         .findTopBySecurityIdAndOrderTypeOrderByIdDesc(request.getSecurityId(), "STOP_LOSS");
 
                 if (existingLogOpt.isPresent()) {
                     OrderLog existingLog = existingLogOpt.get();
 
-                    // Backup old STOP_LOSS manually (no copy constructor)
                     backupLog = new OrderLog();
                     backupLog.setOrderId(existingLog.getOrderId());
                     backupLog.setOrderType(existingLog.getOrderType());
@@ -74,19 +69,17 @@ public class DhanService {
                     backupLog.setCreatedDateTime(existingLog.getCreatedDateTime());
                     backupLog.setPosition(existingLog.getPosition());
 
-                    // Attempt to cancel old order on Dhan
-                    String cancelUrl = "https://api.dhan.co/v2/orders/" + existingLog.getOrderId();
                     try {
                         logger.info("Cancelling old STOP_LOSS: {}", existingLog.getOrderId());
                         HttpHeaders headers = createHeaders();
-                        restTemplate.exchange(cancelUrl, HttpMethod.DELETE, new HttpEntity<>(headers), String.class);
+                        restTemplate.exchange("https://api.dhan.co/v2/orders/" + existingLog.getOrderId(),
+                                HttpMethod.DELETE, new HttpEntity<>(headers), String.class);
                     } catch (Exception e) {
                         logger.warn("Failed to cancel STOP_LOSS: {}", e.getMessage());
                     }
                 }
             }
 
-            // Step 3: Place new order on Dhan
             HttpHeaders headers = createHeaders();
             request.setCorrelationId("order-" + System.currentTimeMillis());
             request.setDhanClientId(clientId);
@@ -97,19 +90,17 @@ public class DhanService {
 
             logger.info("Order Response: {}", response.getBody());
 
-            // Step 4: Save new order log in DB 
             JsonNode json = objectMapper.readTree(response.getBody());
             if (json.has("orderId")) {
-                String orderId = json.get("orderId").asText();
                 OrderLog log = new OrderLog();
-                log.setOrderId(orderId);
+                log.setOrderId(json.get("orderId").asText());
                 log.setOrderType(request.getOrderType());
                 log.setSecurityId(request.getSecurityId());
                 log.setCreatedDateTime(ZonedDateTime.now(ZoneId.of("Asia/Kolkata")));
                 log.setPosition("true");
 
-                OrderLog saved = orderLogRepository.save(log);
-                logger.info("Saved order log to DB: {}", saved);
+                orderLogRepository.save(log);
+                logger.info("Saved order log to DB");
             }
 
             return response;
@@ -117,13 +108,12 @@ public class DhanService {
         } catch (Exception e) {
             logger.error("Error placing order: {}", e.getMessage());
 
-            // Step 5: If STOP_LOSS failed, restore old log
             if ("STOP_LOSS".equalsIgnoreCase(request.getOrderType()) && backupLog != null) {
                 try {
                     logger.warn("Restoring previous STOP_LOSS log due to failure.");
-                    backupLog.setId(null); // Prevent primary key conflict
-                    OrderLog restored = orderLogRepository.save(backupLog);
-                    logger.info("Restored STOP_LOSS log: {}", restored);
+                    backupLog.setId(null);
+                    orderLogRepository.save(backupLog);
+                    logger.info("Restored STOP_LOSS log.");
                 } catch (Exception restoreEx) {
                     logger.error("Failed to restore old STOP_LOSS: {}", restoreEx.getMessage());
                 }
@@ -133,12 +123,11 @@ public class DhanService {
         }
     }
 
-    // Check active positions from Dhan API
     private boolean checkPositionFromDhan(String securityId) {
         try {
-            String url = "https://api.dhan.co/v2/positions";
             HttpHeaders headers = createHeaders();
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+            ResponseEntity<String> response = restTemplate.exchange(
+                    "https://api.dhan.co/v2/positions", HttpMethod.GET, new HttpEntity<>(headers), String.class);
 
             JsonNode root = objectMapper.readTree(response.getBody());
 
@@ -158,7 +147,6 @@ public class DhanService {
         return false;
     }
 
-    // Mark STOP_LOSS order as "closed" in DB if no position exists
     private void updateStopLossLogAsClosed(String securityId) {
         Optional<OrderLog> logOpt = orderLogRepository
                 .findTopBySecurityIdAndOrderTypeOrderByIdDesc(securityId, "STOP_LOSS");
@@ -170,7 +158,6 @@ public class DhanService {
         });
     }
 
-    // Generate headers for Dhan API
     private HttpHeaders createHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.set("access-token", accessToken);
