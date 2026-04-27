@@ -161,7 +161,7 @@ public class DhanService {
     private HttpHeaders createHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.set("access-token", accessToken);
-        headers.set("Dhan-Client-Id", clientId);
+        headers.set("client-id", clientId);
         headers.setContentType(MediaType.APPLICATION_JSON);
         return headers;
     }
