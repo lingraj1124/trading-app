@@ -22,7 +22,7 @@ public class DhanOrderRequest {
 
     // Getters and Setters (you can generate via IDE)
     public String setDhanClientId() { return dhanClientId; }
-    public void setDhanClientId(String dhanClientId) { this.correlationId = dhanClientId; }
+    public void setDhanClientId(String dhanClientId) { this.dhanClientId = dhanClientId; }
 
     // Getters and Setters (you can generate via IDE)
     public String getCorrelationId() { return correlationId; }
