@@ -13,6 +13,6 @@ import java.util.Map;
 public class HealthCheckController {
     @GetMapping("/")
     public String health() {
-        return "✅ App is alive2!";
+        return "✅ App is alive3!";
     }
 }
