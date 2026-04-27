@@ -21,7 +21,7 @@ public class DhanOrderRequest {
     private String orderId;
 
     // Getters and Setters (you can generate via IDE)
-    public String setDhanClientId() { return dhanClientId; }
+    public String getDhanClientId() { return dhanClientId; }
     public void setDhanClientId(String dhanClientId) { this.dhanClientId = dhanClientId; }
 
     // Getters and Setters (you can generate via IDE)
