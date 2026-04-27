@@ -84,7 +84,7 @@ public class DhanService {
             request.setCorrelationId("order-" + System.currentTimeMillis());
             request.setDhanClientId(clientId);
             logger.info("request clientId: {}", request.getDhanClientId());
-            logger.info("properties clientId: {}", request.getDhanClientId());
+            logger.info("properties clientId: {}", clientId);
             logger.info("FINAL REQUEST JSON: {}", objectMapper.writeValueAsString(request));
             HttpEntity<DhanOrderRequest> entity = new HttpEntity<>(request, headers);
             ResponseEntity<String> response = restTemplate.exchange(
