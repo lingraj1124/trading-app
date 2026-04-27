@@ -83,7 +83,7 @@ public class DhanService {
             HttpHeaders headers = createHeaders();
             request.setCorrelationId("order-" + System.currentTimeMillis());
             request.setDhanClientId(clientId);
-
+            logger.info("FINAL REQUEST JSON: {}", objectMapper.writeValueAsString(request));
             HttpEntity<DhanOrderRequest> entity = new HttpEntity<>(request, headers);
             ResponseEntity<String> response = restTemplate.exchange(
                     "https://api.dhan.co/v2/orders", HttpMethod.POST, entity, String.class);
