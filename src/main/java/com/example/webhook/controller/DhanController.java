@@ -8,6 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.http.*;
+import org.springframework.web.client.RestTemplate;
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.util.List;
 import java.util.Map;
 import java.math.RoundingMode;
@@ -184,4 +188,49 @@ public class DhanController {
             return ResponseEntity.badRequest().body("Invalid payload");
         }
     }
+
+   @RequestMapping("/proxy")
+   @RequestMapping(value = "/**", method = {
+           RequestMethod.GET,
+           RequestMethod.POST,
+           RequestMethod.PUT,
+           RequestMethod.DELETE
+   })
+   public ResponseEntity<?> forward(
+           HttpMethod method,
+           HttpServletRequest request,
+           @RequestBody(required = false) String body
+   ) {
+       try {
+           RestTemplate restTemplate = new RestTemplate();
+   
+           String path = request.getRequestURI().replaceFirst("/proxy", "");
+           String query = request.getQueryString();
+   
+           String url = "http://64.227.143.158" + path + (query != null ? "?" + query : "");
+   
+           System.out.println("Forwarding to: " + url);
+   
+           HttpHeaders headers = new HttpHeaders();
+           // (optional) you can ignore headers as you wanted
+   
+           HttpEntity<String> entity = new HttpEntity<>(body, headers);
+   
+           ResponseEntity<String> response = restTemplate.exchange(
+                   url,
+                   method,
+                   entity,
+                   String.class
+           );
+   
+           return ResponseEntity
+                   .status(response.getStatusCode())
+                   .body(response.getBody());
+   
+       } catch (Exception e) {
+           e.printStackTrace();
+           return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                   .body(e.getMessage());
+       }
+   }
 }
