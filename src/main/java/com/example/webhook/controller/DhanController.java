@@ -163,7 +163,7 @@ public class DhanController {
             String path = request.getRequestURI().replaceFirst("/proxy", "");
             String query = request.getQueryString();
 
-            String url = "http://64.227.143.158" + path + (query != null ? "?" + query : "");
+            String url = "http://64.227.143.158:5432" + path + (query != null ? "?" + query : "");
 
             System.out.println("Forwarding to: " + url);
 
